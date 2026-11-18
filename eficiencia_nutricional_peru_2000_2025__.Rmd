@@ -1,0 +1,331 @@
+---
+title: "Eficiencia nutricional de tubérculos y legumbres en el norte, centro y sur del Perú (2000–2025)"
+author: "Daniel Mauricio Quiroz Acho"
+date: ""
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    number_sections: false
+    theme: readable
+    highlight: tango
+    df_print: kable
+    self_contained: true
+    css: styles.css
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 4)
+library(openxlsx); library(lmerTest); library(emmeans); library(performance); library(knitr)
+```
+
+# Resumen
+
+- **Proteína:** la lenteja (61.0 g por sol) y el frijol (60.8 g por sol) son los productos con mayor eficiencia proteica.
+- **Energía:** la yuca (1617.5 kcal por sol), el camote (1194.0) y la papa (839.3) lideran en eficiencia energética.
+- **Evolución:** entre 2000 y 2025 la eficiencia proteica cayó entre 55 % y 74 % según el producto.
+- **Zonas:** los niveles son parecidos entre zonas; la diferencia clara está en que la caída es más lenta en el sur.
+
+```{r datos}
+A <- read.xlsx("Precios_zonas_completo - copia.xlsx", sheet = "Datos")
+A$Producto <- gsub("canchan", "canchán", A$Producto, ignore.case = TRUE)
+A$Producto <- gsub("unica",   "única",   A$Producto, ignore.case = TRUE)
+A$Zona <- factor(A$Zona, levels = c("Norte", "Centro", "Sur"))
+A[c("Producto", "Tipo")] <- lapply(A[c("Producto", "Tipo")], as.factor)
+A$Grupo <- sub(" .*", "", A$Producto)
+```
+
+# Introducción
+
+La seguridad alimentaria no depende únicamente de la composición nutricional de los alimentos, sino también de su precio. Dos productos pueden aportar cantidades similares de proteína o energía, pero representar costos distintos para las familias. En este trabajo se analiza la eficiencia nutricional, entendida como la cantidad de proteína o energía que se obtiene por cada sol gastado (Llerena y de Mendiburu, 2026).
+
+Los tubérculos y las legumbres forman parte de la alimentación en el Perú. Aunque las legumbres suelen aportar más proteína que los tubérculos, la cantidad de nutrientes que se puede adquirir por cada sol también depende del precio de cada producto. Además, los precios varían entre mercados y a lo largo del tiempo, por lo que la eficiencia nutricional puede presentar diferencias entre zonas.
+
+El trabajo utiliza precios mayoristas de Lima (centro), San Martín (norte) y Arequipa (sur) para `r nlevels(A$Producto)` productos clasificados como tubérculos o legumbres. El objetivo es describir la evolución de la eficiencia proteica y energética entre 2000 y 2025, y comparar sus diferencias según el tipo de producto y la zona.
+
+# Metodología
+
+## Fuentes de datos
+
+Los precios se obtuvieron de los reportes anuales de mercados mayoristas del MINAGRI (DGESEP-DEIA, Área de Comercio) correspondientes a Lima, Arequipa y San Martín. Se trabajó con el precio promedio anual, expresado en soles por kilogramo, para el periodo 2000–2025. No se incluyó 2026 porque el año aún no había terminado al momento de elaborar el análisis.
+
+Para el análisis, Lima se consideró representativa de la zona centro, San Martín de la zona norte y Arequipa de la zona sur. Cuando el precio de un producto aparecía vacío o era igual a cero, la observación correspondiente no se incluyó. No se encontraron datos de 2001 para Arequipa ni San Martín, y para 2000 solo hubo información de algunos productos. En los casos de papa blanca (Lima) y garbanzo (Arequipa), los archivos presentaban dos series de precios sin nombre; se utilizó la primera.
+
+La base final contiene `r nrow(A)` observaciones. A diferencia del artículo tomado como referencia, que utiliza precios en chacra, este trabajo emplea precios de mercados mayoristas. Por tanto, los indicadores representan la eficiencia calculada con precios mayoristas y no con precios recibidos por los productores.
+
+## Composición nutricional
+
+Los valores de proteína y energía corresponden a 100 g de la parte comestible de cada producto. La fuente principal fueron las Tablas Peruanas de Composición de Alimentos (CENAN/INS, 2017). Para la yuca blanca y las arvejas verdes, que no aparecen en esa tabla, se utilizaron valores de USDA FoodData Central. No se encontró un valor nutricional específico para la papa canchán, única, color y peruanita; por ello, se empleó como aproximación el valor de la papa blanca o de la papa amarilla, según el caso. Estos registros se identifican como aproximados en la Tabla 1.
+
+```{r tabla1}
+P <- read.xlsx("Precios_zonas_completo final.xlsx", sheet = "Productos")
+names(P)[1:4] <- c("Producto", "kcal", "Proteina", "Origen")
+P$Producto <- gsub("canchan", "canchán", P$Producto, ignore.case = TRUE)
+P$Producto <- gsub("unica",   "única",   P$Producto, ignore.case = TRUE)
+P$Origen <- ifelse(grepl("internet", P$Origen, ignore.case = TRUE), "USDA FoodData Central", P$Origen)
+P <- merge(P, unique(A[c("Producto", "Tipo")]))
+P <- P[order(P$Tipo, P$Producto), c("Tipo", "Producto", "Proteina", "kcal", "Origen")]
+kable(P, row.names = FALSE, col.names = c("Tipo", "Producto", "Proteína (g)", "Energía (kcal)", "Origen del dato"),
+      caption = "Tabla 1. Composición nutricional en 100 g de alimento comestible")
+```
+
+## Indicadores de eficiencia
+
+Se calcularon dos indicadores para medir cuánta proteína y energía se obtiene por cada sol gastado:
+
+$$EP = \frac{10 \times q}{p} \qquad\qquad EE = \frac{10 \times k}{p}$$
+
+En las expresiones, EP representa la eficiencia proteica, medida en gramos de proteína por sol, y EE representa la eficiencia energética, medida en kilocalorías por sol. La variable q corresponde a los gramos de proteína por cada 100 g de alimento; k, a las kilocalorías por cada 100 g; y p, al precio en soles por kilogramo. El factor 10 permite convertir la composición nutricional de 100 g a un kilogramo.
+
+## Análisis estadístico
+
+Para estudiar las diferencias entre grupos y su evolución anual, se ajustó un modelo lineal mixto para cada indicador:
+
+$$Y_{ijk} = \beta_0 + \beta_1 G_i + \beta_2 P_j + \beta_3 (G_i \times P_j) + u_k + \varepsilon_{ijk}$$
+
+En el modelo, Y representa la eficiencia proteica (EP) o energética (EE); $G_i$ corresponde al grupo de comparación (tipo de producto o zona); $P_j$ representa el año; y $G_i \times P_j$ es la interacción entre el grupo y el año. El término $u_k$ representa el efecto aleatorio del producto y $\varepsilon_{ijk}$, el error. Se incluyó el producto como efecto aleatorio porque cada producto aparece en varios años y sus observaciones están relacionadas.
+
+Se ajustaron cuatro modelos: eficiencia proteica y energética según tipo de producto, y eficiencia proteica y energética según zona. En cada modelo se realizó un análisis de varianza tipo III con el método de Satterthwaite. También se calcularon las medias ajustadas mediante `emmeans`, las tendencias anuales mediante `emtrends` y los contrastes entre tendencias. La capacidad explicativa se resumió con el R² marginal, asociado a los efectos fijos, y el R² condicional, que también considera el efecto aleatorio del producto. El análisis se realizó en R con los paquetes `lmerTest`, `emmeans` y `performance`.
+
+Las medias ajustadas se estimaron para el año promedio del periodo. Para los gráficos y las Tablas 2 y 3, las variedades de un mismo producto se agruparon y se calculó el promedio anual. En dichas tablas, DE corresponde a la desviación estándar; el coeficiente de variación (CV) se calculó como la desviación estándar dividida entre el promedio y multiplicada por 100. El porcentaje de caída se obtuvo comparando el primer y el último año disponible mediante la expresión: (primer año − último año) / primer año × 100.
+
+```{r funciones}
+cols <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e")
+
+# Dos gráficos: a) eficiencia proteica y b) eficiencia energética, una línea por grupo
+paneles <- function(d, g) {
+  par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+  for (y in c("eficiencia_proteica", "eficiencia_kcal")) {
+    M <- tapply(d[[y]], list(d$periodo, d[[g]]), mean)
+    n <- ncol(M)
+    prot <- y == "eficiencia_proteica"
+    matplot(as.numeric(rownames(M)), M, type = "l", lty = 1:n, col = cols[1:n], lwd = 2, las = 1, bty = "l",
+            xlab = "Años", ylab = ifelse(prot, "Eficiencia proteica", "Eficiencia energética"),
+            main = ifelse(prot, "a. Proteína", "b. Energía"))
+    matpoints(as.numeric(rownames(M)), M, pch = 16, cex = 0.4, col = cols[1:n])
+    legend("topright", colnames(M), lty = 1:n, col = cols[1:n], lwd = 2, bty = "n", cex = 0.8)
+  }
+}
+
+# Estadísticas de la eficiencia por producto (promedio de cada año)
+anual <- aggregate(cbind(eficiencia_proteica, eficiencia_kcal) ~ Grupo + Tipo + periodo, data = A, FUN = mean)
+estadisticas <- function(y) {
+  r <- do.call(rbind, lapply(split(anual, anual$Grupo), function(d) {
+    d <- d[order(d$periodo), ]; x <- d[[y]]
+    data.frame(Tipo = d$Tipo[1], Promedio = mean(x), DE = sd(x), Rango = max(x) - min(x),
+               Caida = (x[1] - x[length(x)]) / x[1] * 100, CV = sd(x) / mean(x) * 100)
+  }))
+  r <- r[order(r$Tipo, rownames(r)), ]
+  r[-1] <- round(r[-1], 1)
+  cbind(Producto = rownames(r), r)
+}
+
+# Modelo mixto y sus cuatro tablas (ANOVA, medias, tendencias, contrastes)
+estrellas <- function(p) ifelse(p < 0.001, "***", ifelse(p < 0.01, "**", ifelse(p < 0.05, "*", "ns")))
+pvalor <- function(p) ifelse(p < 0.001, "<0.001", sprintf("%.3f", p))
+modelo <- function(y, g) {
+  mod <- lmer(as.formula(paste(y, "~", g, "* periodo + (1 | Producto)")), data = A)
+  a <- as.data.frame(anova(mod))
+  e <- as.data.frame(emmeans(mod, reformulate(g), lmer.df = "satterthwaite"))
+  tr <- emtrends(mod, reformulate(g), var = "periodo", lmer.df = "satterthwaite")
+  d <- as.data.frame(tr)
+  k <- as.data.frame(pairs(tr))
+  list(
+    anova = data.frame(Fuentes = rownames(a), "Gl. Num" = a$NumDF, "Gl. Den" = round(a$DenDF, 1),
+                       "Valor F" = round(a$`F value`, 1), "Signif." = estrellas(a$`Pr(>F)`), check.names = FALSE),
+    medias = data.frame(Grupo = e[[1]], Media = round(e$emmean, 1),
+                        IC95 = paste0("[", sprintf("%.1f", e$lower.CL), "; ", sprintf("%.1f", e$upper.CL), "]")),
+    tend = data.frame(Grupo = d[[1]], Tendencia = round(d$periodo.trend, 2),
+                      IC95 = paste0("[", sprintf("%.2f", d$lower.CL), "; ", sprintf("%.2f", d$upper.CL), "]")),
+    contr = data.frame(Contraste = k$contrast, Estimado = round(k$estimate, 2), SE = round(k$SE, 2),
+                       P.valor = pvalor(k$p.value)),
+    R2m = round(r2(mod)$R2_marginal, 2), R2c = round(r2(mod)$R2_conditional, 2))
+}
+m_EP_tipo <- modelo("eficiencia_proteica", "Tipo")
+m_EE_tipo <- modelo("eficiencia_kcal", "Tipo")
+m_EP_zona <- modelo("eficiencia_proteica", "Zona")
+m_EE_zona <- modelo("eficiencia_kcal", "Zona")
+```
+
+# Resultados y discusión
+
+## Evolución de la eficiencia por producto
+
+Las Figuras 1 y 2 muestran la evolución de la eficiencia proteica y energética de los productos entre 2000 y 2025. En los productos incluidos, ambos indicadores presentan una tendencia general descendente.
+
+```{r fig1, fig.cap = "Figura 1. Eficiencia nutricional en tubérculos. a) Proteica y b) Energética."}
+paneles(subset(A, grepl("Tub", Tipo)), "Grupo")
+```
+
+```{r fig2, fig.cap = "Figura 2. Eficiencia nutricional en legumbres. a) Proteica y b) Energética."}
+paneles(subset(A, !grepl("Tub", Tipo)), "Grupo")
+```
+
+```{r tabla2}
+kable(estadisticas("eficiencia_proteica"), row.names = FALSE,
+      col.names = c("Producto", "Tipo", "Promedio", "DE", "Rango", "% caída", "CV (%)"),
+      caption = "Tabla 2. Estadísticas de la eficiencia proteica por producto, 2000–2025 (g de proteína por sol)")
+```
+
+```{r tabla3}
+kable(estadisticas("eficiencia_kcal"), row.names = FALSE,
+      col.names = c("Producto", "Tipo", "Promedio", "DE", "Rango", "% caída", "CV (%)"),
+      caption = "Tabla 3. Estadísticas de la eficiencia energética por producto, 2000–2025 (kcal por sol)")
+```
+
+Las Tablas 2 y 3 resumen los indicadores por producto. En eficiencia proteica, los promedios más altos corresponden a la lenteja (61.0 g por sol) y al frijol (60.8 g por sol), mientras que el olluco presenta el menor promedio (8.0 g por sol). Entre los tubérculos, la papa y el camote registran promedios cercanos a 20 g de proteína por sol.
+
+En eficiencia energética, los mayores promedios se observan en la yuca (1617.5 kcal por sol), el camote (1194.0 kcal por sol) y la papa (839.3 kcal por sol). Estos valores superan los promedios de las legumbres, que se encuentran entre 424 y 618 kcal por sol. El olluco presenta un promedio de 430.9 kcal por sol, cercano al rango de las legumbres.
+
+Entre el primer y el último año disponible, la eficiencia proteica disminuyó entre 55 % y 74 % según el producto (Tabla 2). Además, el camote y el olluco presentan los CV más altos, superiores al 50 %, lo que indica una mayor variabilidad relativa de sus promedios anuales.
+
+## Eficiencia proteica por tipo de producto
+
+```{r fig3, fig.cap = "Figura 3. Eficiencia nutricional por tipo de producto. a) Proteica y b) Energética."}
+paneles(A, "Tipo")
+```
+
+La Figura 3 muestra que las legumbres presentan mayor eficiencia proteica que los tubérculos, mientras que los tubérculos registran mayor eficiencia energética. En ambos indicadores se observa una evolución descendente durante el periodo.
+
+Para la eficiencia proteica, el análisis de varianza (Tabla 4) muestra que el tipo de producto, el periodo y la interacción son significativos (p < 0.001). La interacción significa que la diferencia entre tipos cambia según el año. El modelo tiene un R² marginal de `r m_EP_tipo$R2m` y un R² condicional de `r m_EP_tipo$R2c`. Esto indica que los efectos fijos explican una parte de la variación y que la proporción explicada aumenta al incorporar el efecto aleatorio del producto.
+
+```{r tabla4}
+kable(m_EP_tipo$anova, row.names = FALSE,
+      caption = "Tabla 4. Análisis de varianza tipo III (método de Satterthwaite) para la eficiencia proteica según el tipo de producto")
+```
+
+Según las medias ajustadas (Tabla 5), la eficiencia proteica es más alta en las legumbres (44.9 g por sol) que en los tubérculos (16.3 g por sol), y sus intervalos de confianza no se cruzan.
+
+```{r tabla5}
+kable(m_EP_tipo$medias, row.names = FALSE, col.names = c("Tipo", "Media ajustada", "IC 95%"),
+      caption = "Tabla 5. Medias ajustadas de la eficiencia proteica según el tipo de producto (emmeans), periodo 2000–2025")
+```
+
+```{r tabla6}
+kable(m_EP_tipo$tend, row.names = FALSE, col.names = c("Tipo", "Tendencia", "IC 95%"),
+      caption = "Tabla 6. Tendencia anual de la eficiencia proteica según el tipo de producto (emtrends)")
+```
+
+```{r tabla7}
+kable(m_EP_tipo$contr, row.names = FALSE, col.names = c("Contraste de tendencia", "Estimado", "SE", "P-valor"),
+      caption = "Tabla 7. Contraste de la tendencia de la eficiencia proteica entre tipos de producto")
+```
+
+Las tendencias de la Tabla 6 son negativas para ambos tipos de producto. La disminución estimada es de 2.07 g de proteína por sol al año en las legumbres y de 0.75 g por sol al año en los tubérculos. El contraste entre ambas pendientes es significativo (p < 0.001; Tabla 7). Por tanto, durante el periodo analizado la eficiencia proteica de las legumbres disminuyó a un ritmo mayor, aunque su media ajustada se mantuvo por encima de la de los tubérculos.
+
+## Eficiencia energética por tipo de producto
+
+En la Tabla 8, el tipo de producto, el periodo y la interacción también son significativos (p < 0.001) para la eficiencia energética. El R² marginal es `r m_EE_tipo$R2m` y el condicional es `r m_EE_tipo$R2c`. Igual que en proteína, el efecto del producto hace que el modelo explique mucho más.
+
+```{r tabla8}
+kable(m_EE_tipo$anova, row.names = FALSE,
+      caption = "Tabla 8. Análisis de varianza tipo III (método de Satterthwaite) para la eficiencia energética según el tipo de producto")
+```
+
+```{r tabla9}
+kable(m_EE_tipo$medias, row.names = FALSE, col.names = c("Tipo", "Media ajustada", "IC 95%"),
+      caption = "Tabla 9. Medias ajustadas de la eficiencia energética según el tipo de producto (emmeans), periodo 2000–2025")
+```
+
+```{r tabla10}
+kable(m_EE_tipo$tend, row.names = FALSE, col.names = c("Tipo", "Tendencia", "IC 95%"),
+      caption = "Tabla 10. Tendencia anual de la eficiencia energética según el tipo de producto (emtrends)")
+```
+
+```{r tabla11}
+kable(m_EE_tipo$contr, row.names = FALSE, col.names = c("Contraste de tendencia", "Estimado", "SE", "P-valor"),
+      caption = "Tabla 11. Contraste de la tendencia de la eficiencia energética entre tipos de producto")
+```
+
+Las medias ajustadas de la Tabla 9 muestran que los tubérculos alcanzan 937.7 kcal por sol, frente a 525.6 kcal por sol en las legumbres. Las tendencias de ambos grupos son negativas: −47.42 kcal por sol al año en los tubérculos y −23.27 en las legumbres (Tabla 10). La diferencia entre las pendientes es significativa (p < 0.001; Tabla 11). En estos datos, los tubérculos presentan mayor eficiencia energética, pero también una disminución anual más pronunciada.
+
+## Eficiencia proteica por zona
+
+La Figura 4 muestra una disminución de ambos indicadores en las tres zonas. En eficiencia proteica, la zona sur presenta valores inferiores a los del norte y centro durante gran parte del periodo. En eficiencia energética, el sur también parte de niveles menores y, aproximadamente desde 2012, las series muestran valores más cercanos.
+
+```{r fig4, fig.cap = "Figura 4. Eficiencia nutricional por zona. a) Proteica y b) Energética."}
+paneles(A, "Zona")
+```
+
+```{r tabla12}
+kable(m_EP_zona$anova, row.names = FALSE,
+      caption = "Tabla 12. Análisis de varianza tipo III (método de Satterthwaite) para la eficiencia proteica según la zona")
+```
+
+```{r tabla13}
+kable(m_EP_zona$medias, row.names = FALSE, col.names = c("Zona", "Media ajustada", "IC 95%"),
+      caption = "Tabla 13. Medias ajustadas de la eficiencia proteica según la zona (emmeans), periodo 2000–2025")
+```
+
+```{r tabla14}
+kable(m_EP_zona$tend, row.names = FALSE, col.names = c("Zona", "Tendencia", "IC 95%"),
+      caption = "Tabla 14. Tendencia anual de la eficiencia proteica según la zona (emtrends)")
+```
+
+```{r tabla15}
+kable(m_EP_zona$contr, row.names = FALSE, col.names = c("Contraste de tendencia", "Estimado", "SE", "P-valor"),
+      caption = "Tabla 15. Contraste de la tendencia de la eficiencia proteica entre zonas (ajuste de Tukey)")
+```
+
+El análisis de varianza de la Tabla 12 indica efectos significativos de la zona, el periodo y su interacción (p < 0.001). El R² marginal es `r m_EP_zona$R2m` y el R² condicional es `r m_EP_zona$R2c`. El R² marginal es menor que el obtenido en el modelo según tipo de producto (`r m_EP_tipo$R2m`), por lo que, en esta comparación, los efectos fijos del modelo por zona explican una menor proporción de la variación.
+
+Las medias ajustadas de eficiencia proteica son 28.2 g por sol en el norte, 28.6 en el centro y 25.4 en el sur (Tabla 13). Las tendencias son negativas en las tres zonas: −1.58 g por sol al año en el norte, −1.44 en el centro y −1.08 en el sur (Tabla 14). Los contrastes indican diferencias entre la tendencia del sur y las del norte (p < 0.001) y centro (p = 0.003), mientras que no se encontró una diferencia significativa entre norte y centro (p = 0.434; Tabla 15).
+
+## Eficiencia energética por zona
+
+```{r tabla16}
+kable(m_EE_zona$anova, row.names = FALSE,
+      caption = "Tabla 16. Análisis de varianza tipo III (método de Satterthwaite) para la eficiencia energética según la zona")
+```
+
+```{r tabla17}
+kable(m_EE_zona$medias, row.names = FALSE, col.names = c("Zona", "Media ajustada", "IC 95%"),
+      caption = "Tabla 17. Medias ajustadas de la eficiencia energética según la zona (emmeans), periodo 2000–2025")
+```
+
+```{r tabla18}
+kable(m_EE_zona$tend, row.names = FALSE, col.names = c("Zona", "Tendencia", "IC 95%"),
+      caption = "Tabla 18. Tendencia anual de la eficiencia energética según la zona (emtrends)")
+```
+
+```{r tabla19}
+kable(m_EE_zona$contr, row.names = FALSE, col.names = c("Contraste de tendencia", "Estimado", "SE", "P-valor"),
+      caption = "Tabla 19. Contraste de la tendencia de la eficiencia energética entre zonas (ajuste de Tukey)")
+```
+
+Para la eficiencia energética, la zona, el periodo y la interacción también presentan efectos significativos (p < 0.001; Tabla 16). El R² marginal es `r m_EE_zona$R2m` y el condicional es `r m_EE_zona$R2c`. Las medias ajustadas son 742.9 kcal por sol en el norte, 839.1 en el centro y 676.3 en el sur (Tabla 17).
+
+Las tendencias de eficiencia energética son negativas en las tres zonas: −38.89 kcal por sol al año en el norte, −38.05 en el centro y −26.91 en el sur (Tabla 18). Los contrastes muestran que la pendiente del sur es diferente de las del norte (p = 0.002) y centro (p = 0.001). No se encontró una diferencia significativa entre las tendencias del norte y el centro (p = 0.962; Tabla 19).
+
+
+# Conclusiones
+
+1. Entre 2000 y 2025, la eficiencia proteica y energética mostró una tendencia descendente en los productos y zonas analizados. Además, las estadísticas por producto registran caídas de entre 55 % y 74 % en la eficiencia proteica entre el primer y el último año disponible. Esto indica que, según los precios mayoristas utilizados, por cada sol se obtuvo una menor cantidad de nutrientes al final del periodo que al inicio.
+
+2. Las legumbres tuvieron mayor eficiencia proteica que los tubérculos. Las medias ajustadas fueron de 44.9 g por sol para las legumbres y 16.3 g por sol para los tubérculos. En cambio, para la eficiencia energética los tubérculos presentaron una media ajustada mayor: 937.7 kcal por sol, frente a 525.6 kcal por sol en las legumbres. Por ello, la comparación depende del nutriente que se quiera obtener.
+
+3. La lenteja (61.0 g por sol) y el frijol (60.8 g por sol) registraron los mayores promedios de eficiencia proteica por producto. En eficiencia energética destacaron la yuca (1617.5 kcal por sol), el camote (1194.0 kcal por sol) y la papa (839.3 kcal por sol). Estos resultados muestran que no existe un único producto con el mayor rendimiento para ambos indicadores.
+
+4. En la comparación por zonas, las medias ajustadas son similares: 28.2, 28.6 y 25.4 g de proteína por sol (norte, centro y sur) y 742.9, 839.1 y 676.3 kcal por sol, con intervalos de confianza que se traslapan ampliamente. Por tanto, los datos no muestran una diferencia clara de nivel entre zonas. La diferencia que sí respaldan los contrastes está en las tendencias: la del sur es distinta de las del norte y el centro, mientras que norte y centro no difieren entre sí en ninguno de los dos indicadores.
+
+5. Las tres zonas presentaron tendencias anuales negativas, y la disminución estimada fue menor en el sur tanto para la eficiencia proteica (−1.08 g por sol al año) como para la energética (−26.91 kcal por sol al año). Esto describe un ritmo de caída más lento en el sur, no niveles más altos de eficiencia.
+# Limitaciones
+
+- El análisis utiliza precios mayoristas de tres mercados o ámbitos regionales: Lima, San Martín y Arequipa. Por ello, los resultados describen estas fuentes y su asignación a las zonas norte, centro y sur; no necesariamente representan todos los mercados de cada región.
+- La disponibilidad de precios no fue completa para todos los años y productos. No se encontraron datos de 2001 para Arequipa y San Martín, y para 2000 solo hubo información de algunos productos. Además, se excluyeron los registros con precios vacíos o iguales a cero.
+- Para la yuca blanca y las arvejas verdes se utilizaron datos nutricionales de USDA FoodData Central. Para algunas variedades de papa se emplearon valores aproximados de otras variedades. Estas diferencias en las fuentes y aproximaciones pueden influir en los indicadores calculados.
+- Los resultados se basan en precios mayoristas y no en precios minoristas pagados directamente por los hogares. Por tanto, la eficiencia calculada no representa necesariamente el costo final de compra para los consumidores.
+
+# Referencias
+
+Llerena, G., y de Mendiburu, F. (2026). Eficiencia nutricional de cultivos agrícolas en Perú: Accesibilidad económica de proteína y energía (1997–2025). *Manglar, 23*(3), 447–457. https://doi.org/10.57188/manglar.2026.040
+
+Instituto Nacional de Salud. (2017). *Tablas peruanas de composición de alimentos* (10.ª ed.). Ministerio de Salud. https://repositorio.ins.gob.pe/handle/20.500.14196/1034
+
+Food and Agriculture Organization of the United Nations. (s. f.). *Food composition*. FAO. https://www.fao.org/food-composition/es
+
+U.S. Department of Agriculture, Agricultural Research Service. (s. f.). *FoodData Central*. https://fdc.nal.usda.gov/
+
+Organización de las Naciones Unidas para la Alimentación y la Agricultura. (s. f.). *INFOODS: Tablas y bases de datos de composición de alimentos de América Latina*. https://www.fao.org/infoods/infoods/tablas-y-bases-de-datos/america-latina/es/

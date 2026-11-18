@@ -1,0 +1,363 @@
+
+/* ==========================================================
+   EFICIENCIA NUTRICIONAL DE TUBÉRCULOS Y LEGUMBRES
+   ========================================================== */
+
+/* 1. TIPOGRAFÍAS */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap');
+
+/* 2. PALETA */
+:root {
+  --fondo: #faf7f0;
+  --texto: #2b2a26;
+  --terracota: #a4532b;
+  --terracota-claro: #ead8cb;
+  --gris: #716e66;
+  --linea: #ded8cd;
+  --fila: #f3efe7;
+  --blanco: #fffdf9;
+}
+
+/* 3. FONDO Y TEXTO GENERAL */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 35px;
+}
+
+body {
+  background: var(--fondo) !important;
+  color: var(--texto) !important;
+  font-family: 'Source Serif 4', Georgia, serif !important;
+  font-size: 17px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+.main-container {
+  max-width: 1160px !important;
+  padding-top: 48px;
+  padding-bottom: 90px;
+}
+
+/* 4. ÁREA PRINCIPAL */
+#content {
+  max-width: 790px;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+p {
+  margin: 0 0 1.15em;
+  color: var(--texto);
+}
+
+/* 5. TÍTULO PRINCIPAL */
+h1.title {
+  font-family: 'Source Serif 4', Georgia, serif !important;
+  font-size: 42px;
+  font-weight: 600;
+  line-height: 1.16;
+  letter-spacing: -1.1px;
+  color: var(--texto);
+  margin-top: 12px;
+  margin-bottom: 18px;
+  max-width: 850px;
+}
+
+.author,
+.date {
+  font-family: 'Inter', sans-serif;
+  color: var(--gris);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+/* 6. ENCABEZADOS */
+h1, h2, h3, h4, h5 {
+  font-family: 'Source Serif 4', Georgia, serif !important;
+  color: var(--texto);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 29px;
+  font-weight: 600;
+  margin-top: 2.2em;
+  margin-bottom: 0.75em;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--linea);
+}
+
+h3 {
+  font-size: 23px;
+  font-weight: 600;
+  margin-top: 1.7em;
+  margin-bottom: 0.55em;
+}
+
+h4 {
+  font-size: 19px;
+  font-weight: 600;
+  margin-top: 1.4em;
+}
+
+/* 7. ENLACES */
+a,
+a:visited {
+  color: var(--terracota) !important;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover,
+a:focus {
+  color: #793b20 !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 8. ÍNDICE LATERAL */
+#TOC,
+.tocify {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+#TOC {
+  padding: 0;
+}
+
+#TOC > ul,
+.tocify ul {
+  padding-left: 0;
+}
+
+#TOC li,
+.tocify .list-group-item {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 5px 8px 5px 12px !important;
+  color: var(--gris) !important;
+}
+
+#TOC li a,
+.tocify .list-group-item a {
+  color: var(--gris) !important;
+  font-weight: 400;
+}
+
+#TOC li.active,
+.tocify .list-group-item.active {
+  background: transparent !important;
+  border-left: 2px solid var(--terracota) !important;
+  padding-left: 10px !important;
+  color: var(--terracota) !important;
+}
+
+#TOC li.active a,
+.tocify .list-group-item.active a {
+  color: var(--terracota) !important;
+  font-weight: 600;
+}
+
+#TOC li:hover,
+.tocify .list-group-item:hover {
+  background: transparent !important;
+}
+
+#TOC li:hover a,
+.tocify .list-group-item:hover a {
+  color: var(--terracota) !important;
+}
+
+/* 9. TABLAS */
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border-spacing: 0;
+  margin: 25px 0 32px;
+  background: transparent !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--texto);
+}
+
+table thead {
+  border-top: 1px solid var(--texto);
+  border-bottom: 1px solid var(--texto);
+}
+
+table th {
+  padding: 10px 12px !important;
+  font-weight: 600;
+  color: var(--texto);
+  text-align: left;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--linea) !important;
+}
+
+table td {
+  padding: 9px 12px !important;
+  border: none !important;
+  border-bottom: 1px solid var(--linea) !important;
+  vertical-align: top;
+  background: transparent !important;
+}
+
+table tbody tr:last-child td {
+  border-bottom: 1px solid var(--texto) !important;
+}
+
+table tbody tr:nth-child(even) {
+  background: var(--fila) !important;
+}
+
+table caption {
+  caption-side: bottom;
+  padding-top: 10px;
+  color: var(--gris);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  text-align: left;
+}
+
+/* Evitar que el nombre del producto se parta en varias líneas.
+   Se aplica a la primera columna de las tablas. */
+table th:first-child,
+table td:first-child {
+  white-space: nowrap;
+}
+
+/* 10. FIGURAS Y GRÁFICOS */
+.figure {
+  margin: 30px 0 38px;
+  text-align: center;
+}
+
+.figure img {
+  max-width: 100%;
+  height: auto;
+  background: transparent;
+}
+
+.figure .caption,
+p.caption {
+  font-family: 'Inter', sans-serif;
+  color: var(--gris);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 10px;
+  text-align: left;
+}
+
+/* 11. CÓDIGO Y RESULTADOS */
+pre,
+code {
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+pre {
+  background: #f0ece3 !important;
+  border: 1px solid var(--linea) !important;
+  border-radius: 3px;
+  padding: 14px 17px;
+  color: var(--texto);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+code {
+  color: var(--terracota);
+  background: #f0ece3;
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+/* 12. CITAS Y SEPARADORES */
+blockquote {
+  border-left: 2px solid var(--terracota);
+  padding: 8px 20px;
+  margin: 25px 0;
+  color: var(--gris);
+  background: transparent;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--linea);
+  margin: 42px 0;
+}
+
+/* 13. FÓRMULAS */
+.math {
+  color: var(--texto);
+}
+
+.MathJax_Display {
+  margin: 25px 0 !important;
+}
+
+/* 14. RESPONSIVE */
+@media (max-width: 991px) {
+  .main-container {
+    padding: 25px 22px 60px;
+  }
+
+  #content {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  h1.title {
+    font-size: 34px;
+  }
+
+  h2 {
+    font-size: 25px;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    font-size: 16px;
+  }
+
+  h1.title {
+    font-size: 30px;
+  }
+
+  table {
+    font-size: 11px;
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+/* 15. IMPRESIÓN */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  #TOC,
+  .tocify {
+    display: none !important;
+  }
+
+  #content {
+    max-width: 100%;
+  }
+
+  a {
+    color: var(--texto) !important;
+  }
+}
